@@ -2,44 +2,45 @@ import React, { useState } from "react";
 import { NavLink } from "react-router-dom";
 import styled from "styled-components";
 import Alert from "../components/Alert";
+import { useChangeUserPasswordMutation } from "../services/userAuthApi";
+import { getToken } from "../services/localStorageServicec";
 
 function ChangePassword() {
 
-  const [error, setError] = useState({status:false, msg:'', type:''})
-  const handleSubmit = (e) => {
+  const [serverError, setServerError] = useState({});
+  const [successMsg, setsuccessMsg] = useState();
+
+  const [changeUserPassword]= useChangeUserPasswordMutation()
+  const {access_token} = getToken()
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const data = new FormData(e.currentTarget);
     let actualData = {}
     for (const [key, value] of data) {
-      if (value === ''){
-        setError({status:true, msg:"All fields are required", type:"error"})
-        return
-      }
       actualData[key] = value
     }
-    console.log(actualData.password, actualData.confirm_password);
-    if(actualData.password !== actualData.confirm_password){
-      setError({status:true, msg:"Password doesn't match", type:"error"})
-      return
+    const res = await changeUserPassword({actualData, access_token})
+    if(res.error){
+      setServerError(res.error.data.errors)
+      if (res.error.data.errors.code){
+        setServerError({"non_field_errors": [res.error.data.errors.messages[0].message]})
+      }
+
     }
+    if(res.data){
+      console.log(res.data.msg);
+      setsuccessMsg(res.data.msg)
+    }
+    
     document.getElementById('change-pass-form').reset()
-    setError({status:true, msg:"Login Success", type:"success"})
-    console.log(actualData);
   };
   return (
     <Container>
       <h1>Change Password</h1>
       <form onSubmit={handleSubmit} id="change-pass-form">
         <LoginContainer>
-          <div>
-            <label htmlFor="old_password">Old Password</label>
-            <input
-              type="text"
-              name="old_password"
-              id="old_password"
-              placeholder="Old Password"
-            />
-          </div>
+          
           <div>
             <label htmlFor="password">New Password</label>
             <input
@@ -48,20 +49,28 @@ function ChangePassword() {
               id="password"
               placeholder="Password"
             />
+            {serverError.password ? <Alert type={"error"}>{serverError.password[0]}</Alert> : ''}
+
           </div>
           <div>
-            <label htmlFor="confirm_password">Confirm Password</label>
+            <label htmlFor="password2">Confirm Password</label>
             <input
               type="password"
-              name="confirm_password"
-              id="confirm_password"
+              name="password2"
+              id="password2"
               placeholder="Confirm Password"
             />
+            {serverError.password2 ? <Alert type={"error"}>{serverError.password2[0]}</Alert> : ''}
+
           </div>
           <div className="error-container">
-            {
-              error.status && <Alert status={error.status} msg={error.msg} type={error.type}/>
-            }
+          {serverError.non_field_errors ? serverError.non_field_errors.map((error, index)=>(
+            <Alert key={index} type={"error"}>{error}</Alert>
+          )) : ''}
+          {
+            successMsg ? <Alert type={"success"}>{successMsg}</Alert> : ''
+          }
+          
           </div>
           <button type="">Change Password</button>
          

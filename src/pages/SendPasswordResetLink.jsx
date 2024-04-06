@@ -1,36 +1,59 @@
 import React, { useState } from "react";
 import styled from "styled-components";
 import Alert from "../components/Alert";
+import { useSendResetPassEmailMutation } from "../services/userAuthApi";
+import Loader from "../components/Loader";
 
 function SendPasswordResetLink() {
-  const [error, setError] = useState({status:false, msg:'', type:''})
-  const handleSubmit = (e) => {
+  const [serverError, setserverError] = useState({});
+  const [successMSG, setSuccessMSG] = useState();
+  const [sendResetPassEmail, { isLoading, isSuccess }] =
+    useSendResetPassEmailMutation();
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const data = new FormData(e.currentTarget);
-    let actualData = {email: data.get('email')}
-    if(actualData.email){
-      setError({status:true, msg:"Reset password link is sent to gmail", type:"success"})
-      console.log(actualData);
-      document.getElementById('sendpasslink-form').reset()
-    }
-    else{
-      setError({status:true, msg:"Email is required", type:"error"})
-    }
+    let actualData = { email: data.get("email") };
 
+    const res = await sendResetPassEmail(actualData);
+    if (res.error) {
+      // console.log(res.error.data.errors.non_field_errors);
+      if (res.error.data.errors.email) {
+        setserverError({ email: res.error.data.errors.email });
+      }
+      if (res.error.data.errors.non_field_errors) {
+        setserverError({
+          non_field_errors: res.error.data.errors.non_field_errors,
+        });
+      }
+    }
+    if (res.data) {
+      console.log(res.data.msg);
+      setSuccessMSG(res.data.msg);
+      setserverError({})
+    }
   };
   return (
     <Container>
       <form onSubmit={handleSubmit} id="sendpasslink-form">
-      <div>
-        <label htmlFor="email">Enter Email</label>
-        <input type="email" name="email" id="email" placeholder="Email" />
-      </div>
-      <div className="error-container">
-            {
-              error.status && <Alert status={error.status} msg={error.msg} type={error.type}/>
-            }
-          </div>
-      <button type='submit'>Send Reset Password Link</button>
+        <div>
+          <label htmlFor="email">Enter Email</label>
+          <input type="email" name="email" id="email" placeholder="Email" />
+        </div>
+        <div className="error-container">
+          {serverError.email ? (
+            <Alert type={"error"}>{serverError.email[0]}</Alert>
+          ) : (
+            ""
+          )}
+          {serverError.non_field_errors ? (
+            <Alert type={"error"}>{serverError.non_field_errors[0]}</Alert>
+          ) : (
+            ""
+          )}
+        </div>
+        <button type="submit"> {isLoading ? <Loader /> : "Send Reset Password Link"}</button>
+
+        {successMSG ? <Alert type={"success"}>{successMSG}</Alert> : ""}
       </form>
     </Container>
   );
@@ -45,8 +68,8 @@ const Container = styled.main`
   margin: 9rem auto 0rem;
   padding: 40px;
   background-color: #191919;
-  form{
-  background-color: #191919;
+  form {
+    background-color: #191919;
   }
   div {
     display: flex;
@@ -72,12 +95,11 @@ const Container = styled.main`
     cursor: pointer;
     transition: all 0.2s ease-in-out;
     align-self: center;
-
   }
   button:hover {
     background-color: #2a2929;
   }
-  .error-container{
+  .error-container {
     margin-top: 30px;
   }
 `;

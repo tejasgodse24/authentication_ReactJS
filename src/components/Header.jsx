@@ -1,8 +1,19 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 import styled from "styled-components";
+import { getToken } from "../services/localStorageServicec";
 
 function Header() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const { access_token } = getToken();
+  useEffect(()=>{
+    if(access_token){
+      setIsLoggedIn(true)
+    }
+    else{
+      setIsLoggedIn(false)
+    }
+  }, [access_token])
   return (
     <HeaderBox>
       <div>
@@ -12,18 +23,26 @@ function Header() {
         <NavLink className="nav-link" to="/">
           Home
         </NavLink>
-        <NavLink className="nav-link"  to="/about">
+        <NavLink className="nav-link" to="/about">
           About
         </NavLink>
-        <NavLink className="nav-link"  to="/contact">
+        <NavLink className="nav-link" to="/contact">
           Contact
         </NavLink>
-        <NavLink className="nav-link"  to="/login">
-          Login
-        </NavLink>
-        <NavLink className="nav-link"  to="/register">
-          Register
-        </NavLink>
+     
+     
+          <NavLink className="nav-link" to="/dashboard">
+            Dashboard
+          </NavLink>
+       
+            <NavLink className="nav-link" to="/login">
+              Login
+            </NavLink>
+            <NavLink className="nav-link" to="/register">
+              Register
+            </NavLink>
+         
+        
       </ul>
     </HeaderBox>
   );
@@ -53,6 +72,4 @@ const HeaderBox = styled.header`
   img {
     width: 100px;
   }
-
- 
 `;

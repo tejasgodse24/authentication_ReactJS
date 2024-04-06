@@ -1,37 +1,42 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import styled from "styled-components";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import Alert from "../components/Alert";
+import { useRegisterUserMutation } from "../services/userAuthApi";
+import { setUserToken } from "../features/authSlice";
+import { getToken } from "../services/localStorageServicec";
+import {useDispatch} from 'react-redux'
 
 function Register() {
-  const [error, setError] = useState({ status: false, msg: "", type: "" });
-  const handleSubmit = (e) => {
+  const [serverError, setserverError] = useState({});
+
+  const navigate = useNavigate()
+  const dispatch = useDispatch()
+
+  const [registerUser, {isLoading}] = useRegisterUserMutation()
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const data = new FormData(e.currentTarget);
     let actualData = {};
     for (const [key, value] of data) {
-      if (value === "") {
-        setError({
-          status: true,
-          msg: "All fields are required",
-          type: "error",
-        });
-        return;
-      }
       actualData[key] = value;
     }
-    if (actualData["tc"] === undefined) {
-      setError({ status: true, msg: "Please allow T&C", type: "error" });
-      return;
+    const res = await registerUser(actualData)
+    if(res.error){
+      setserverError(res.error.data.errors)
     }
-    else if(actualData['password'] !== actualData['confirm-password']){
-      setError({ status: true, msg: "Password doesn't match", type: "error" });
-      return;
+    if(res.data){
+      navigate('/')
     }
     document.getElementById("register-form").reset();
-    setError({ status: true, msg: "Register Success", type: "success" });
-    console.log(actualData);
   };
+
+  let { access_token } = getToken()
+  useEffect(() => {
+    dispatch(setUserToken({ access_token: access_token }))
+  }, [access_token, dispatch])
+
   return (
     <Container>
       <h1>Register</h1>
@@ -40,10 +45,12 @@ function Register() {
           <div>
             <label htmlFor="name">Name</label>
             <input type="text" name="name" id="name" placeholder="Name" />
+            {serverError.name ? <Alert type={"error"}>{serverError.name[0]}</Alert> : ''}
           </div>
           <div>
             <label htmlFor="email">Email</label>
             <input type="email" name="email" id="email" placeholder="Email" />
+            {serverError.email ? <Alert type={"error"}>{serverError.email[0]}</Alert> : ''}
           </div>
           <div>
             <label htmlFor="password">Password</label>
@@ -53,26 +60,30 @@ function Register() {
               id="password"
               placeholder="Password"
             />
+            {serverError.password ? <Alert type={"error"}>{serverError.password[0]}</Alert> : ''}
           </div>
           <div>
-            <label htmlFor="confirm-password">Confirm Password</label>
+            <label htmlFor="password2">Confirm Password</label>
             <input
               type="password"
-              name="confirm-password"
-              id="confirm-password"
+              name="password2"
+              id="password2"
               placeholder="Confirm Password"
             />
+            {serverError.password2 ? <Alert type={"error"}>{serverError.password2[0]}</Alert> : ''}
           </div>
           <div className="check-box">
             <input type="checkbox" name="tc" id="tc" />
             <label htmlFor="tc">Allow terms and condition</label>
           </div>
-          <div className="error-container">
-            {error.status && (
-              <Alert status={error.status} msg={error.msg} type={error.type} />
-            )}
-          </div>
+            {serverError.tc ? <Alert type={"error"}>{serverError.tc[0]}</Alert> : ''}
           <button type="submit">Register</button>
+          <div className="error-container">
+          {serverError.non_field_errors ? serverError.non_field_errors.map((error, index)=>(
+            <Alert key={index} type={"error"}>{error}</Alert>
+          )) : ''}
+          </div>
+
           <div className="login-link-container">
             <p>Already Have Account?</p>
             <NavLink to="/login">Login Here</NavLink>

@@ -1,25 +1,47 @@
-import React, { useState } from "react";
-import { NavLink } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { NavLink, useNavigate } from "react-router-dom";
 import styled from "styled-components";
 import Alert from "../components/Alert";
-
+import { useLoginUserMutation } from "../services/userAuthApi";
+import Loader from "../components/Loader";
+import { getToken, storeToken } from "../services/localStorageServicec";
+import {useDispatch} from 'react-redux'
+import { setUserToken } from "../features/authSlice";
 function Login() {
-  const [error, setError] = useState({status:false, msg:'', type:''})
-  const handleSubmit = (e) => {
+  const [serverError, setserverError] = useState({});
+
+  const navigate = useNavigate()
+  const dispatch = useDispatch()
+
+  const [loginUser, {isLoading}] = useLoginUserMutation()
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const data = new FormData(e.currentTarget);
     let actualData = {}
     for (const [key, value] of data) {
-      if (value === ''){
-        setError({status:true, msg:"All fields are required", type:"error"})
-        return
-      }
       actualData[key] = value
     }
+
+    const res = await loginUser(actualData)
+
+    if(res.error){
+      setserverError(res.error.data.errors)
+    }
+    if(res.data){
+      storeToken(res.data.token)
+      let { access_token } = getToken()
+      dispatch(setUserToken({ access_token: access_token }))
+      navigate('/dashboard')
+    }
     document.getElementById('login-form').reset()
-    setError({status:true, msg:"Login Success", type:"success"})
-    console.log(actualData);
   };
+
+  let { access_token } = getToken()
+  useEffect(() => {
+    dispatch(setUserToken({ access_token: access_token }))
+  }, [access_token, dispatch])
+
   return (
     <Container>
       <h1>Login</h1>
@@ -28,6 +50,8 @@ function Login() {
           <div>
             <label htmlFor="email">Email</label>
             <input type="email" name="email" id="email" placeholder="Email" />
+            {serverError.email ? <Alert type={"error"}>{serverError.email[0]}</Alert> : ''}
+
           </div>
           <div>
             <label htmlFor="password">Password</label>
@@ -37,13 +61,15 @@ function Login() {
               id="password"
               placeholder="Password"
             />
+            {serverError.password ? <Alert type={"error"}>{serverError.password[0]}</Alert> : ''}
           </div>
+          
+          <button type=""> {isLoading ? <Loader /> : "Log In"}  </button>
           <div className="error-container">
-            {
-              error.status && <Alert status={error.status} msg={error.msg} type={error.type}/>
-            }
+          {serverError.non_field_errors ? serverError.non_field_errors.map((error, index)=>(
+            <Alert key={index} type={"error"}>{error}</Alert>
+          )) : ''}
           </div>
-          <button type=""> Log In</button>
           <div className="forgot-pass-container">
             <p>Forgot Your Password?</p>
             <NavLink to='/email-reset-password-link'>Reset Password</NavLink>
